@@ -1,4 +1,6 @@
 import csv
+import datetime
+
 import requests
 import time
 
@@ -64,7 +66,7 @@ def main():
     pollution_params = ['co', 'no2', 'o3', 'pm10', 'pm25', 'so2']
     weather_params = ['pressure', 'windSpeed', 'windBearing']
 
-    headers = []
+    headers = ['Timestamp (UTC)']
     for place in places:
         for param in pollution_params:
             headers.append('{} {}'.format(place.name, param))
@@ -83,7 +85,7 @@ def main():
             get_pollution(places, unix_time, pollution_params)
             get_weather(places, unix_time, weather_params)
 
-            row = []
+            row = [datetime.datetime.fromtimestamp(unix_time).strftime('%Y-%m-%d %H:%M')]
             for place in places:
                 row.extend(place.pollution.values())
                 row.extend(place.weather.values())
