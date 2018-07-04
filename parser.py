@@ -110,9 +110,8 @@ def get_weather():
 
 
 if __name__ == '__main__':
-    # get_pollution()
+    get_pollution()
     time_format = '%Y-%m-%d %H:%M'
     time_header = 'Timestamp (UTC)'
-    header = [time_header].extend(get_header())
 
-    df.to_csv('weather.csv', header=header, date_format = time_format)
+    df[1:].to_csv('weather.csv', index_label=time_header, date_format=time_format)
