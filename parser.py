@@ -21,7 +21,7 @@ places = [
 ]
 
 start_time = datetime.datetime(2017, 3, 31, hour=0)
-end_time = start_time + datetime.timedelta(days=2)
+end_time = datetime.datetime.now()
 _dates = pd.date_range(start_time, end_time, freq="1h")
 
 pollution_params = ['co', 'no2', 'o3', 'pm10', 'pm25', 'so2']
@@ -111,9 +111,8 @@ def save_df():
     time_format = '%Y-%m-%d %H:%M'
     time_header = 'Timestamp (UTC)'
 
-    df[1:].to_csv('weather.csv', index_label=time_header)  # , date_format=time_format)
+    df[1:].to_csv('weather.csv', index_label=time_header, date_format=time_format)
 
 
 if __name__ == '__main__':
     save_df()
-
