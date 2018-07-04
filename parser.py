@@ -20,7 +20,7 @@ places = [
     Place('Tianjin', 1792943, 39.3434, 117.3616),
 ]
 
-start_time = datetime.datetime(1978, 3, 31, hour=0)
+start_time = datetime.datetime(2017, 3, 31, hour=0)
 end_time = start_time + datetime.timedelta(days=2)
 _dates = pd.date_range(start_time, end_time, freq="1h")
 
@@ -49,8 +49,8 @@ def get_place_pollution(place, r_start, r_end):
 
     for hour_info in info:
         pollution = hour_info['data']
-        timestamp = hour_info['ts'].replace('T', ' ').replace('Z', '')
-
+        timestamp = hour_info['ts']
+        timestamp = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%SZ')
         for param in pollution_params:
             try:
                 val = pollution[param]
@@ -80,7 +80,6 @@ def get_weather():
     url = 'https://api.darksky.net/forecast/{}/{},{},{}'
 
     delta = datetime.timedelta(hours=24)
-    time_format = '%Y-%m-%d %H:%M:%S'
 
     r_time = start_time
     while r_time < end_time:
@@ -91,7 +90,7 @@ def get_weather():
             hourly_weather = r.json()['hourly']['data']
 
             for weather in hourly_weather:
-                timestamp = datetime.datetime.fromtimestamp(weather['time']).strftime(time_format)
+                timestamp = datetime.datetime.fromtimestamp(weather['time'])
 
                 for param in weather_params:
                     try:
@@ -106,7 +105,7 @@ def get_weather():
 
 
 def save_df():
-    # get_pollution()
+    get_pollution()
     get_weather()
 
     time_format = '%Y-%m-%d %H:%M'
@@ -117,5 +116,4 @@ def save_df():
 
 if __name__ == '__main__':
     save_df()
-    # time_format = '%Y-%m-%d %H:%M'
-    # print(datetime.datetime.fromtimestamp(255657600).strftime(time_format))
+
