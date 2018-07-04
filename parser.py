@@ -1,7 +1,7 @@
-import csv
 import datetime
 
 import requests
+import pandas as pd
 
 
 class Place:
@@ -10,7 +10,6 @@ class Place:
         self.id = id
         self.lat = lat
         self.long = long
-        self.pollution = []
 
 
 places = [
@@ -22,36 +21,30 @@ places = [
 ]
 
 start_time = datetime.datetime(2017, 3, 31, hour=0)
-end_time = start_time + datetime.timedelta(days=1)
+end_time = start_time + datetime.timedelta(days=30)
+_dates = pd.date_range(start_time, end_time, freq="1h")
+
+pollution_params = ['co', 'no2', 'o3', 'pm10', 'pm25', 'so2']
+weather_params = ['pressure', 'windSpeed', 'windBearing']
 
 
-# end_time = datetime.datetime.now()
-
-
-def write_csv(name, places, params, data):
-    time_header = 'Timestamp (UTC)'
-
-    header = [time_header]
+def get_header():
+    header = []
     for place in places:
-        for param in params:
+        for param in pollution_params:
             header.append('{} {}'.format(place.name, param))
 
-    with open(name + '.csv', 'w') as csvfile:
-        csv_writer = csv.writer(csvfile, delimiter='\t')
-        csv_writer.writerow(header)
-        csv_writer.writerows(data)
+    for place in places:
+        for param in weather_params:
+            header.append('{} {}'.format(place.name, param))
+
+    return header
 
 
-class PlaceData:
-    def __init__(self, place, pollution) -> None:
-        self.place = place
-        self.pollution = pollution
+df = pd.DataFrame(index=_dates, columns=get_header())
 
 
-# r_time.strftime('%Y-%m-%d %H:%M')
-
-
-def get_place_pollution(place, r_start, r_end, params):
+def get_place_pollution(place, r_start, r_end):
     key = 'x9HE9OTzXpQIRFaHZljhePhOq6egQ8ko2AnGmOq0l6BfWm4w'
     url = 'https://api.origins-china.cn/v1/places/{}/history?series=raw&begin={}&end={}&key={}'
 
@@ -60,55 +53,35 @@ def get_place_pollution(place, r_start, r_end, params):
 
     for hour_info in info:
         pollution = hour_info['data']
-        timestamp = hour_info['ts'].replace('T', ' ').replace(':00Z', '')
-        hour_data = [timestamp]
+        timestamp = hour_info['ts'].replace('T', ' ').replace('Z', '')
 
-        for param in params:
+        for param in pollution_params:
             try:
                 val = pollution[param]
             except KeyError:
                 val = None
             finally:
-                hour_data.append(val)
-
-        place.pollution.append(hour_data)
+                col = '{} {}'.format(place.name, param)
+                df.at[timestamp, col] = val
 
 
 def get_pollution():
-    params = ['co', 'no2', 'o3', 'pm10', 'pm25', 'so2']
-
     delta = datetime.timedelta(days=30)
+    time_format = '%Y-%m-%dT%H:%M:%SZ'
 
     r_time = start_time
     while r_time < end_time:
-        r_start = r_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+        r_start = r_time.strftime(time_format)
         r_time += delta
-        r_end = r_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+        r_end = r_time.strftime(time_format)
 
         for place in places:
-            get_place_pollution(place, r_start, r_end, params)
-
-        r_time += delta
-
-    for idx, place in enumerate(places):
-        write_csv(place.name, [place], params, place.pollution)
-
-    data = []
-    first_pollution = places[0].pollution
-    for row_idx, row_data in enumerate(first_pollution):
-        combined_row = [row_data[0]]
-        for place in places:
-            combined_row.extend(place.pollution[row_idx][1:])
-
-        data.append(combined_row)
-
-    write_csv('pollution', places, params, data)
+            get_place_pollution(place, r_start, r_end)
 
 
 def get_weather():
     key = '4317146d63a0e039a4110e3ea201bd3d'
     url = 'https://api.darksky.net/forecast/{}/{},{},{}'
-    params = ['pressure', 'windSpeed', 'windBearing']
 
     delta = datetime.timedelta(hours=1)
     data = []
@@ -123,7 +96,7 @@ def get_weather():
 
             hour_data = [r_time.strftime('%Y-%m-%d %H:%M')]
 
-            for param in params:
+            for param in weather_params:
                 try:
                     val = weather[param]
                 except KeyError:
@@ -137,4 +110,9 @@ def get_weather():
 
 
 if __name__ == '__main__':
-    get_pollution()
+    # get_pollution()
+    time_format = '%Y-%m-%d %H:%M'
+    time_header = 'Timestamp (UTC)'
+    header = [time_header].extend(get_header())
+
+    df.to_csv('weather.csv', header=header, date_format = time_format)
