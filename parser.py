@@ -20,8 +20,8 @@ places = [
     Place('Tianjin', 1792943, 39.3434, 117.3616),
 ]
 
-start_time = datetime.datetime(2017, 3, 31, hour=0)
-end_time = start_time + datetime.timedelta(days=30)
+start_time = datetime.datetime(1978, 3, 31, hour=0)
+end_time = start_time + datetime.timedelta(days=2)
 _dates = pd.date_range(start_time, end_time, freq="1h")
 
 pollution_params = ['co', 'no2', 'o3', 'pm10', 'pm25', 'so2']
@@ -31,11 +31,7 @@ weather_params = ['pressure', 'windSpeed', 'windBearing']
 def get_header():
     header = []
     for place in places:
-        for param in pollution_params:
-            header.append('{} {}'.format(place.name, param))
-
-    for place in places:
-        for param in weather_params:
+        for param in pollution_params + weather_params:
             header.append('{} {}'.format(place.name, param))
 
     return header
@@ -83,8 +79,8 @@ def get_weather():
     key = '4317146d63a0e039a4110e3ea201bd3d'
     url = 'https://api.darksky.net/forecast/{}/{},{},{}'
 
-    delta = datetime.timedelta(hours=1)
-    data = []
+    delta = datetime.timedelta(hours=24)
+    time_format = '%Y-%m-%d %H:%M:%S'
 
     r_time = start_time
     while r_time < end_time:
@@ -92,26 +88,34 @@ def get_weather():
 
         for place in places:
             r = requests.get(url.format(key, place.lat, place.long, unix_time))
-            weather = r.json()['currently']
+            hourly_weather = r.json()['hourly']['data']
 
-            hour_data = [r_time.strftime('%Y-%m-%d %H:%M')]
+            for weather in hourly_weather:
+                timestamp = datetime.datetime.fromtimestamp(weather['time']).strftime(time_format)
 
-            for param in weather_params:
-                try:
-                    val = weather[param]
-                except KeyError:
-                    val = None
-                finally:
-                    hour_data.append(val)
-
-            data.append(hour_data)
+                for param in weather_params:
+                    try:
+                        val = weather[param]
+                    except KeyError:
+                        val = None
+                    finally:
+                        col = '{} {}'.format(place.name, param)
+                        df.at[timestamp, col] = val
 
         r_time += delta
 
 
-if __name__ == '__main__':
-    get_pollution()
+def save_df():
+    # get_pollution()
+    get_weather()
+
     time_format = '%Y-%m-%d %H:%M'
     time_header = 'Timestamp (UTC)'
 
-    df[1:].to_csv('weather.csv', index_label=time_header, date_format=time_format)
+    df[1:].to_csv('weather.csv', index_label=time_header)  # , date_format=time_format)
+
+
+if __name__ == '__main__':
+    save_df()
+    # time_format = '%Y-%m-%d %H:%M'
+    # print(datetime.datetime.fromtimestamp(255657600).strftime(time_format))
