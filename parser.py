@@ -26,6 +26,8 @@ _dates = pd.date_range(start_time, end_time, freq="1h")
 
 pollution_params = ['co', 'no2', 'o3', 'pm10', 'pm25', 'so2']
 weather_params = ['pressure', 'windSpeed', 'windBearing']
+beijing_hours = [1, 3, 6, 12, 24, 48, 72, 168]
+bj_pm = 'Beijing pm25'
 
 
 def get_header():
@@ -33,6 +35,9 @@ def get_header():
     for place in places:
         for param in pollution_params + weather_params:
             header.append('{} {}'.format(place.name, param))
+
+    for hours in beijing_hours:
+        header.append('{} {}'.format(bj_pm, hours))
 
     return header
 
@@ -75,6 +80,22 @@ def get_pollution():
             get_place_pollution(place, r_start, r_end)
 
 
+def add_beijing_pm():
+    for row in df.itertuples(index=True):
+        timestamp = row[0]
+
+        for hours in beijing_hours:
+            delta = datetime.timedelta(hours=hours)
+            r_time = timestamp + delta
+
+            try:
+                pm_val = df.at[r_time, bj_pm]
+            except KeyError:
+                pm_val = None
+            finally:
+                df.at[timestamp, '{} {}'.format(bj_pm, hours)] = pm_val
+
+
 def get_weather():
     key = '4317146d63a0e039a4110e3ea201bd3d'
     url = 'https://api.darksky.net/forecast/{}/{},{},{}'
@@ -107,6 +128,7 @@ def get_weather():
 def save_df():
     get_pollution()
     get_weather()
+    add_beijing_pm()
 
     time_format = '%Y-%m-%d %H:%M'
     time_header = 'Timestamp (UTC)'
